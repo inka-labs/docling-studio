@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "docling-studio"
+version = "0.1.0"
+description = "Local UI for the Docling CLIs: convert documents with every option, browse the results."
+requires-python = ">=3.12"
+
+[tool.hatch.build.targets.wheel]
+packages = ["docling_studio"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

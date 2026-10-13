@@ -1,0 +1,12 @@
+.pixi/
+*.egg-info/
+__pycache__/
+frontend/node_modules/
+frontend/dist/
+.pytest_cache/
+*.log
+.DS_Store
+*.tsbuildinfo
+packaging/dist/
+frontend/dist-export/
+backend/tests/.cli-schema-cache.json
