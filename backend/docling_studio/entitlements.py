@@ -11,6 +11,7 @@ FEATURES = {
     "folders": "Convert every document in a folder",
     "word": "Save as Word",
     "excel": "Save tables as Excel",
+    "csv": "Save tables as CSV",
     "describe_pictures": "Describe pictures with AI",
     "advanced": "Advanced mode: every Docling option",
 }

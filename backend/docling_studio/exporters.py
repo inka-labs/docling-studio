@@ -5,14 +5,16 @@ order themselves, with python-docx and openpyxl (both MIT, both already Docling 
 Word gets the body only: headings at their level, paragraphs, lists (with the original's markers),
 tables (merged cells kept, header rows bold), pictures with their captions, code and formulas.
 Page headers, footers and page numbers (Docling's "furniture") are left out, as in its Markdown.
-Excel gets one sheet per table.
+Excel gets one sheet per table; CSV one file per table.
 """
 
 import base64
+import csv
 import io
 import json
 import re
 from pathlib import Path
+from typing import Callable
 
 MAX_PICTURE_INCHES = 6.0
 
@@ -273,3 +275,35 @@ def to_excel(json_path: Path, out: Path) -> dict:
     out.parent.mkdir(parents=True, exist_ok=True)
     book.save(out)
     return {"tables": len(tables)}
+
+
+# CSV ----------------------------------------------------------------------------------------------
+
+
+def table_rows(table: dict) -> list[list[str]]:
+    """A table as rows of cell text. A merged cell's text fills every position it spans, so each
+    column keeps its header (Revenue over two columns gives Revenue, Revenue), as pandas would."""
+    rows, cols, cells = _table_cells(table)
+    grid = [["" for _ in range(cols)] for _ in range(rows)]
+    for cell in cells:
+        for r in range(cell.get("start_row_offset_idx", 0), min(cell.get("end_row_offset_idx", 1), rows)):
+            for c in range(cell.get("start_col_offset_idx", 0), min(cell.get("end_col_offset_idx", 1), cols)):
+                grid[r][c] = cell.get("text", "")
+    return grid
+
+
+def to_csv(json_path: Path, out_for: Callable[[int, int], Path]) -> list[Path]:
+    """Write each table to its own CSV file, at out_for(table number, how many tables). UTF-8 with a
+    byte-order mark, so Excel opens accented text correctly. Raises ExportError when there are no tables."""
+    doc = load(json_path)
+    tables = [t for t in doc.get("tables", []) if t.get("content_layer", "body") == "body"]
+    if not tables:
+        raise ExportError("Docling found no tables in this document.")
+    written = []
+    for n, table in enumerate(tables, 1):
+        out = out_for(n, len(tables))
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w", newline="", encoding="utf-8-sig") as f:
+            csv.writer(f).writerows(table_rows(table))
+        written.append(out)
+    return written

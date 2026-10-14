@@ -2,6 +2,7 @@
 export const FORMAT_INFO: Record<string, { ext: string; color: string; note: string }> = {
   word: { ext: "DOCX", color: "#2b579a", note: "Edit in Word, Pages or Google Docs" },
   excel: { ext: "XLSX", color: "#217346", note: "Every table, one sheet each" },
+  csv: { ext: "CSV", color: "#0f766e", note: "Every table as its own file" },
   markdown: { ext: "MD", color: "#5b4bb7", note: "For notes apps and AI chat tools" },
   text: { ext: "TXT", color: "#5f6b7a", note: "Just the words" },
   html: { ext: "HTML", color: "#c75c14", note: "Opens in any browser" },

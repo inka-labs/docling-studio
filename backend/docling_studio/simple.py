@@ -17,6 +17,7 @@ from .core import settings
 FORMATS = {
     "word": {"label": "Word document", "ext": ".docx", "docling": "json"},
     "excel": {"label": "Excel (tables)", "ext": ".xlsx", "docling": "json"},
+    "csv": {"label": "CSV (tables)", "ext": ".csv", "docling": "json"},
     "markdown": {"label": "Markdown", "ext": ".md", "docling": "md"},
     "text": {"label": "Plain text", "ext": ".txt", "docling": "text"},
     "html": {"label": "Web page", "ext": ".html", "docling": "html"},
@@ -115,6 +116,23 @@ def _free(path: Path) -> Path:
     raise JobError(f"Too many files called {path.name} in {path.parent}.")
 
 
+def _make(fmt: str, doc_json: Path, output: Path, folder: Path, stem: str) -> list[Path]:
+    """The file(s) of one format for one document: CSV makes one per table, the others one."""
+    if fmt == "csv":
+        return exporters.to_csv(doc_json, lambda n, total: _free(folder / (f"{stem}.csv" if total == 1 else f"{stem} - table {n}.csv")))
+    target = _free(folder / f"{stem}{FORMATS[fmt]['ext']}")
+    if fmt == "word":
+        exporters.to_word(doc_json, target)
+    elif fmt == "excel":
+        exporters.to_excel(doc_json, target)
+    else:
+        source = output / f"{stem}{FORMATS[fmt]['ext']}"
+        if not source.is_file():
+            raise exporters.ExportError(f"Docling didn't make {source.name}.")
+        shutil.copy2(source, target)
+    return [target]
+
+
 def deliver(finish: dict, output: Path, log) -> list[dict]:
     """Make the files a job asked for from Docling's results in output/, in the save-to folder.
     log(text) adds a line to the run's log."""
@@ -130,23 +148,15 @@ def deliver(finish: dict, output: Path, log) -> list[dict]:
         stem = doc_json.stem
         for fmt in finish["formats"]:
             spec = FORMATS[fmt]
-            target = _free(folder / f"{stem}{spec['ext']}")
             try:
-                if fmt == "word":
-                    exporters.to_word(doc_json, target)
-                elif fmt == "excel":
-                    exporters.to_excel(doc_json, target)
-                else:
-                    source = output / f"{stem}{spec['ext']}"
-                    if not source.is_file():
-                        raise exporters.ExportError(f"Docling didn't make {source.name}.")
-                    shutil.copy2(source, target)
+                made = _make(fmt, doc_json, output, folder, stem)
             except exporters.ExportError as e:
                 delivered.append({"document": stem, "format": fmt, "path": None, "note": str(e)})
                 log(f"{brand.NAME}: {stem} as {spec['label']}: {e}")
                 continue
-            delivered.append({"document": stem, "format": fmt, "path": str(target), "size": target.stat().st_size, "note": None})
-            log(f"{brand.NAME}: saved {target}")
+            for target in made:
+                delivered.append({"document": stem, "format": fmt, "path": str(target), "size": target.stat().st_size, "note": None})
+                log(f"{brand.NAME}: saved {target}")
     if not delivered:
         raise JobError("Docling didn't produce a document to save.")
     return delivered

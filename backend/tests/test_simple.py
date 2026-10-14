@@ -60,6 +60,18 @@ def test_excel_has_a_sheet_per_table_with_numbers(doc_json, tmp_path):
     assert sheet["A1"].font.bold and sheet.freeze_panes == "A2"
 
 
+def test_csv_has_a_file_per_table(doc_json, tmp_path):
+    doc = sample_document()
+    doc["tables"].append({**doc["tables"][0], "self_ref": "#/tables/1"})
+    doc_json.write_text(json.dumps(doc))
+    written = exporters.to_csv(doc_json, lambda n, total: tmp_path / f"t{n}of{total}.csv")
+    assert [p.name for p in written] == ["t1of2.csv", "t2of2.csv"]
+    raw = written[0].read_bytes()
+    assert raw.startswith(b"\xef\xbb\xbf")  # a BOM, so Excel reads it as UTF-8
+    # the merged header fills both columns it spans; numbers stay as written
+    assert raw.decode("utf-8-sig").splitlines() == ["Region,Revenue,Revenue", 'North,"1,234",5.5']
+
+
 def test_excel_without_tables_says_so(doc_json, tmp_path):
     doc = sample_document()
     doc["tables"] = []
@@ -91,6 +103,13 @@ def test_job_saves_every_format(client, fake_docling, pdf, save_to):
     # again: nothing is overwritten
     run2 = wait(client, client.post("/api/jobs", json={"inputs": [{"kind": "path", "path": str(pdf)}], "formats": ["word"]}).json()["id"])
     assert run2["delivered"][0]["path"] == str(save_to / "report (2).docx")
+
+
+def test_job_saves_csv(client, fake_docling, pdf, save_to):
+    run = wait(client, client.post("/api/jobs", json={"inputs": [{"kind": "path", "path": str(pdf)}], "formats": ["csv", "excel"]}).json()["id"])
+    assert run["status"] == "succeeded", run
+    assert [(d["format"], d["path"]) for d in run["delivered"]] == [("csv", str(save_to / "report.csv")), ("excel", str(save_to / "report.xlsx"))]
+    assert "--to json" in run["command"]
 
 
 def test_job_choices_checked(client, fake_docling, pdf):
@@ -150,5 +169,5 @@ def test_plan_gates_jobs(client, fake_docling, pdf, monkeypatch):
 
 def test_options_for_the_page(client):
     o = client.get("/api/jobs/options").json()
-    assert set(o["formats"]) == {"word", "excel", "markdown", "text", "html"}
+    assert set(o["formats"]) == {"word", "excel", "csv", "markdown", "text", "html"}
     assert o["save_to"].endswith("Documents/DocuFlow") and o["save_to_label"] == "~/Documents/DocuFlow"
