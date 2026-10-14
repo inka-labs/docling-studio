@@ -6,15 +6,15 @@ import webbrowser
 import uvicorn
 
 from .core.store import home
-from . import __version__, launch
+from . import __version__, brand, launch
 from .app import create_app
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="docling-studio", description="Run Docling Studio locally.")
+    parser = argparse.ArgumentParser(prog=brand.SLUG, description=f"Run {brand.NAME} locally.")
     parser.add_argument("--port", type=int, default=launch.PORT)
     parser.add_argument("--no-browser", action="store_true", help="Don't open the browser.")
-    parser.add_argument("--version", action="version", version=f"Docling Studio {__version__}")
+    parser.add_argument("--version", action="version", version=f"{brand.NAME} {__version__}")
     args = parser.parse_args()
 
     if sys.stdout is None:  # pythonw (Windows shortcut, start at login): no console to write to
@@ -23,13 +23,13 @@ def main() -> None:
     if launch.running(args.port) == "studio":
         # Already running (opened twice, or start at login after opening it): nothing to do. Exit 0
         # so the login service doesn't keep retrying.
-        print(f"Docling Studio is already running on port {args.port}.")
+        print(f"{brand.NAME} is already running on port {args.port}.")
         return
 
     app = create_app()
     url = f"http://127.0.0.1:{args.port}/auth?token={app.state.token}"
     print(
-        f"\n  Docling Studio {__version__} is running on this computer only.\n"
+        f"\n  {brand.NAME} {__version__} is running on this computer only.\n"
         f"  Open: {url}\n"
         f"  (UI dev server: http://localhost:5174/auth?token={app.state.token})\n"
     )

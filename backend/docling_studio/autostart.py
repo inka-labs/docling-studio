@@ -7,10 +7,10 @@ Settings → Studio has a switch for this; from a terminal:
     pixi run autostart status
 
 macOS: a LaunchAgent (~/Library/LaunchAgents/org.docling.studio.plist).
-Linux: a systemd user service (~/.config/systemd/user/docling-studio.service).
+Linux: a systemd user service (~/.config/systemd/user/<brand.SLUG>.service).
 Windows: a shortcut in the Startup folder.
 Studio starts in the background without opening a browser; open it from its app / shortcut, or
-http://127.0.0.1:8766. Its output goes to ~/.docling-studio/studio.log. If Studio is already
+http://127.0.0.1:<brand.PORT>. Its output goes to studio.log in its folder. If Studio is already
 running, the login copy notices and exits.
 """
 
@@ -19,10 +19,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from . import brand
 from .core.store import home
 from .launch import APP_DIR, server_command
 
-LABEL = "org.docling.studio"
+LABEL = brand.BUNDLE_ID
 
 
 class AutostartError(Exception):
@@ -38,11 +39,11 @@ def _plist() -> Path:
 
 
 def _unit() -> Path:
-    return Path.home() / ".config" / "systemd" / "user" / "docling-studio.service"
+    return Path.home() / ".config" / "systemd" / "user" / f"{brand.SLUG}.service"
 
 
 def _startup_shortcut() -> Path:
-    return Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "Docling Studio.lnk"
+    return Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / f"{brand.NAME}.lnk"
 
 
 def _path() -> Path | None:
@@ -103,7 +104,7 @@ def install() -> str:
     if sys.platform.startswith("linux"):
         _unit().parent.mkdir(parents=True, exist_ok=True)
         _unit().write_text(f"""[Unit]
-Description=Docling Studio
+Description={brand.NAME}
 
 [Service]
 WorkingDirectory={APP_DIR}
@@ -117,7 +118,7 @@ WantedBy=default.target
 """)
         try:
             subprocess.run(["systemctl", "--user", "daemon-reload"], check=True, capture_output=True)
-            subprocess.run(["systemctl", "--user", "enable", "--now", "docling-studio.service"], check=True, capture_output=True)
+            subprocess.run(["systemctl", "--user", "enable", "--now", f"{brand.SLUG}.service"], check=True, capture_output=True)
         except (OSError, subprocess.CalledProcessError) as e:
             raise AutostartError(f"systemd didn't accept the service: {e}")
         return f"Studio now starts when you log in. Service: {_unit()}"
@@ -142,7 +143,7 @@ def uninstall(stop_now: bool = True) -> str:
             subprocess.run(["launchctl", "unload", "-w", str(_plist())], capture_output=True)
         _plist().unlink()
     elif sys.platform.startswith("linux") and _unit().exists():
-        subprocess.run(["systemctl", "--user", "disable", "docling-studio.service"], capture_output=True)
+        subprocess.run(["systemctl", "--user", "disable", f"{brand.SLUG}.service"], capture_output=True)
         _unit().unlink()
         subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
     elif os.name == "nt" and _startup_shortcut().exists():

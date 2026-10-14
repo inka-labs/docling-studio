@@ -24,19 +24,19 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 
-from . import cli_schema, docview, inputs, models, presets, services
+from . import brand, cli_schema, docview, entitlements, inputs, models, native, presets, services, simple
 from .core import settings
 from .core.store import home
 from .runs import STUDIO_DIR, RunError, RunManager, redact
 
-COOKIE = "docling_studio_session"
+COOKIE = f"{brand.SLUG}_session"
 ALLOWED_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 UI_DIST = Path(os.environ.get("DOCLING_STUDIO_UI") or Path(__file__).resolve().parents[2] / "frontend" / "dist")
 SANDBOX = "sandbox allow-scripts allow-popups allow-downloads"
 
 
 def _hostname(host: str) -> str:
-    """'127.0.0.1:8766' -> '127.0.0.1', '[::1]:8766' -> '[::1]'."""
+    """'127.0.0.1:8767' -> '127.0.0.1', '[::1]:8767' -> '[::1]'."""
     if host.startswith("["):
         return host.split("]", 1)[0] + "]"
     return host.rsplit(":", 1)[0]
@@ -64,7 +64,7 @@ def create_app() -> FastAPI:
         yield
         runs.stop_all()
 
-    app = FastAPI(title="Docling Studio", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app = FastAPI(title=brand.NAME, docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.token = token
     app.state.runs = runs
 
@@ -81,7 +81,7 @@ def create_app() -> FastAPI:
             return JSONResponse({"detail": "Forbidden host."}, status_code=403)
         if request.url.path.startswith("/api/"):
             if not hmac.compare_digest(request.cookies.get(COOKIE, ""), token):
-                return JSONResponse({"detail": "Not signed in. Open Docling Studio again (or the sign-in link it printed)."}, status_code=401)
+                return JSONResponse({"detail": f"Not signed in. Open {brand.NAME} again (or the sign-in link it printed)."}, status_code=401)
             origin = request.headers.get("origin")
             if request.method not in ("GET", "HEAD") and origin:
                 if _hostname(origin.split("://", 1)[-1]) not in ALLOWED_HOSTS:
@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
     @app.get("/auth")
     def auth(request: Request):
         if not hmac.compare_digest(request.query_params.get("token", ""), token):
-            return HTMLResponse("<p>That sign-in link isn't valid. Open Docling Studio again from its app or shortcut (or use the link it printed).</p>", status_code=401)
+            return HTMLResponse(f"<p>That sign-in link isn't valid. Open {brand.NAME} again from its app or shortcut (or use the link it printed).</p>", status_code=401)
         resp = RedirectResponse("/", status_code=303)
         resp.set_cookie(COOKIE, token, httponly=True, samesite="strict", max_age=60 * 60 * 24 * 365)
         return resp
@@ -231,9 +231,65 @@ def create_app() -> FastAPI:
     @app.post("/api/runs", status_code=201)
     def start_run(payload: dict):
         try:
-            return runs.submit(payload)
+            # a finish step only comes from a job (/api/jobs), which decides where files are saved
+            return runs.submit({k: v for k, v in payload.items() if k != "finish"})
         except (RunError, cli_schema.SchemaError) as e:
             bad(e)
+
+    # The everyday converter (simple.py) --------------------------------------------------------
+
+    @app.get("/api/jobs/options")
+    def job_options():
+        return {**simple.options(), "native_dialogs": native.available(), "name": brand.NAME, "tagline": brand.TAGLINE}
+
+    @app.post("/api/jobs", status_code=201)
+    def start_job(payload: dict):
+        try:
+            return runs.submit(simple.build(payload))
+        except (simple.JobError, RunError, cli_schema.SchemaError) as e:
+            bad(e)
+
+    @app.get("/api/plan")
+    def get_plan():
+        return entitlements.plan()
+
+    def delivered_file(rid: str, path: str) -> str:
+        """A file this job saved: the only ones Open and Show in folder may open."""
+        run = run_or_404(rid)
+        if not any(d.get("path") == path for d in run.get("delivered") or []):
+            raise HTTPException(404, "That isn't a file this conversion saved.")
+        if not Path(path).exists():
+            raise HTTPException(404, "The file has been moved or deleted.")
+        return path
+
+    @app.post("/api/runs/{rid}/open")
+    def open_delivered(rid: str, payload: dict):
+        native.open_file(delivered_file(rid, str(payload.get("path", ""))))
+        return {"ok": True}
+
+    @app.post("/api/runs/{rid}/show")
+    def show_delivered(rid: str, payload: dict):
+        native.reveal(delivered_file(rid, str(payload.get("path", ""))))
+        return {"ok": True}
+
+    @app.post("/api/choose/files")
+    def choose_files():
+        """The computer's Open dialog; the chosen files are read where they are."""
+        picked = []
+        for path in native.choose_files():
+            try:
+                picked.append(inputs.check({"kind": "path", "path": path}, {"path"}))
+            except inputs.InputError:
+                pass
+        return picked
+
+    @app.post("/api/choose/folder")
+    def choose_folder(payload: dict | None = None):
+        purpose = (payload or {}).get("purpose")
+        path = native.choose_folder("Where should converted files be saved?" if purpose == "save_to" else "Choose a folder of documents to convert")
+        if path and purpose == "save_to":
+            settings.update({"save_to": path})
+        return {"path": path}
 
     @app.get("/api/runs/{rid}")
     def get_run(rid: str):

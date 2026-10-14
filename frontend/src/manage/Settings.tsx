@@ -2,6 +2,7 @@
  *  and Quit. */
 import { Fragment, useEffect, useState } from "react";
 import { api, loadSchema, type Plugin, type Schema, type Settings as S, type Version } from "../api";
+import { BRAND } from "../brand";
 import { confirm, toast } from "../ui/Dialogs";
 
 export default function Settings() {
@@ -39,7 +40,7 @@ export default function Settings() {
   };
 
   const quit = async () => {
-    if (!(await confirm("Quit Docling Studio?", { body: "Open it again from Applications or the Start menu.", confirm: "Quit" }))) return;
+    if (!(await confirm(`Quit ${BRAND.name}?`, { body: "Open it again from Applications or the Start menu.", confirm: "Quit" }))) return;
     try {
       await api.quit();
     } catch (e) {
@@ -49,7 +50,7 @@ export default function Settings() {
     setQuitting(true);
   };
 
-  if (quitting) return <div className="page"><div className="empty"><h2>Docling Studio has quit</h2><p>You can close this tab.</p></div></div>;
+  if (quitting) return <div className="page"><div className="empty"><h2>{BRAND.name} has quit</h2><p>You can close this tab.</p></div></div>;
 
   return (
     <div className="page">
@@ -119,7 +120,7 @@ export default function Settings() {
 
       {version && (
         <div className="card">
-          <div className="card-head"><h2>Docling Studio</h2><span className="badge">v{version.version}</span></div>
+          <div className="card-head"><h2>{BRAND.name}</h2><span className="badge">v{version.version}</span></div>
           <div className="card-body stack">
             {version.autostart.supported && (
               <div className="bool-row">
@@ -128,13 +129,13 @@ export default function Settings() {
                   <span />
                 </label>
                 <div>
-                  <div className="field-label">Start Docling Studio when I log in</div>
+                  <div className="field-label">Start {BRAND.name} when I log in</div>
                   <div className="field-help">In the background, so it's ready when you open it.</div>
                 </div>
               </div>
             )}
             <div className="small muted">Studio keeps its runs, presets and settings in <code>{version.home}</code>. API keys are in your system keychain under “docling-studio”.</div>
-            <div><button className="danger" onClick={quit}>Quit Docling Studio</button></div>
+            <div><button className="danger" onClick={quit}>Quit {BRAND.name}</button></div>
           </div>
         </div>
       )}

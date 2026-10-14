@@ -1,5 +1,5 @@
 """Open Studio without a terminal: start it in the background if it isn't running, then open it in
-the browser, signed in. This is what the Docling Studio app (macOS) and the Start-menu shortcut
+the browser, signed in. This is what the app (macOS) and the Start-menu shortcut
 (Windows) run; see packaging/.
 
     python -m docling_studio.launch           # open Studio (starting it if needed)
@@ -20,10 +20,11 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
+from . import brand
 from .core.store import home
 
-PORT = int(os.environ.get("DOCLING_STUDIO_PORT") or 8766)  # Ecoscope Studio has 8765; another port if 8766 is taken
-COOKIE = "docling_studio_session"  # app.COOKIE (not imported: that would load the whole server)
+PORT = int(os.environ.get(brand.PORT_ENV) or brand.PORT)  # another port if that one is taken
+COOKIE = f"{brand.SLUG}_session"  # app.COOKIE (not imported: that would load the whole server)
 APP_DIR = Path(__file__).resolve().parents[2]
 BUNDLED_BIN = APP_DIR.parent / "bin"  # where the installers put pixi
 
@@ -141,11 +142,11 @@ def alert(message: str) -> None:
     print(message, file=sys.stderr)
     try:
         if sys.platform == "darwin":
-            script = 'on run argv\n display alert "Docling Studio" message (item 1 of argv) as critical\nend run'
+            script = f'on run argv\n display alert "{brand.NAME}" message (item 1 of argv) as critical\nend run'
             subprocess.run(["osascript", "-e", script, message], capture_output=True, timeout=600)
         elif os.name == "nt":
             import ctypes
-            ctypes.windll.user32.MessageBoxW(0, message, "Docling Studio", 0x10)  # type: ignore[attr-defined]
+            ctypes.windll.user32.MessageBoxW(0, message, brand.NAME, 0x10)  # type: ignore[attr-defined]
     except Exception:
         pass
 
@@ -163,7 +164,7 @@ def open_studio(port: int = PORT, browser: bool = True) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="docling-studio-launch", description="Open Docling Studio, starting it if needed.")
+    parser = argparse.ArgumentParser(prog=f"{brand.SLUG}-launch", description=f"Open {brand.NAME}, starting it if needed.")
     parser.add_argument("--stop", action="store_true", help="Ask a running Studio to quit.")
     parser.add_argument("--force", action="store_true", help="With --stop: quit even if conversions are running (stops them).")
     parser.add_argument("--no-browser", action="store_true")

@@ -1,4 +1,4 @@
-"""Where Studio keeps its state: ~/.docling-studio (override with DOCLING_STUDIO_HOME).
+"""Where the app keeps its state: ~/<brand.HOME_DIR> (override with the brand.HOME_ENV variable).
 
 Nothing in here is secret: docling-serve API keys live in the OS keychain (services.py), and PDF
 passwords and request headers are never written down. Files are still written owner-only, since
@@ -11,9 +11,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from .. import brand
+
 
 def home() -> Path:
-    path = Path(os.environ.get("DOCLING_STUDIO_HOME") or Path.home() / ".docling-studio")
+    path = Path(os.environ.get(brand.HOME_ENV) or Path.home() / brand.HOME_DIR)
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
     return path
 

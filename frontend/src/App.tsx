@@ -1,5 +1,7 @@
 import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { api, setUnauthorizedHandler } from "./api";
+import { BRAND } from "./brand";
+import { useAdvanced } from "./simple/advanced";
 import { href, useRoute } from "./router";
 import { DialogHost } from "./ui/Dialogs";
 import { ThemeToggle } from "./ui/ThemeToggle";
@@ -11,6 +13,12 @@ const RunPage = lazy(() => import("./runs/Run"));
 const ModelsPage = lazy(() => import("./models/Models"));
 const ServicesPage = lazy(() => import("./services/Services"));
 const SettingsPage = lazy(() => import("./manage/Settings"));
+const HomePage = lazy(() => import("./simple/Home"));
+const JobPage = lazy(() => import("./simple/Job"));
+const HistoryPage = lazy(() => import("./simple/History"));
+const PreferencesPage = lazy(() => import("./simple/Preferences"));
+
+const SIMPLE_PAGES = ["home", "job", "history", "preferences"];
 
 type Summary = Awaited<ReturnType<typeof api.summary>>;
 
@@ -36,8 +44,15 @@ export default function App() {
   useEffect(() => setUnauthorizedHandler(() => setSignedOut(true)), []);
   const summary = useSummary(JSON.stringify(route));
 
-  const section = route.page === "tool" ? "tools" : route.page === "run" ? "runs" : route.page;
+  const advanced = useAdvanced();
+  const simple = SIMPLE_PAGES.includes(route.page);
+  const section = route.page === "tool" ? "tools" : route.page === "run" ? "runs" : route.page === "job" ? "home" : route.page;
   const live = (summary?.running ?? 0) + (summary?.queued ?? 0);
+  const simpleTabs: { id: string; label: string; to: string; count?: number }[] = [
+    { id: "home", label: "Convert", to: href({ page: "home" }) },
+    { id: "history", label: "History", to: href({ page: "history" }) },
+    { id: "preferences", label: "Settings", to: href({ page: "preferences" }) },
+  ];
   const tabs = [
     { id: "convert", label: "Convert", to: href({ page: "convert" }) },
     { id: "tools", label: "Tools", to: href({ page: "tools" }) },
@@ -49,21 +64,24 @@ export default function App() {
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <a className="brand" href={href({ page: "convert" })}>
+      <header className={`topbar${simple ? "" : " advanced-bar"}`}>
+        <a className="brand" href={href({ page: "home" })}>
           <img className="brand-mark" src="/favicon.svg" alt="" />
-          <span className="brand-name">Docling Studio</span>
+          <span className="brand-name">{BRAND.name}</span>
+          {!simple && <span className="badge">Advanced</span>}
         </a>
         <nav aria-label="Main">
-          {tabs.map((t) => (
+          {(simple ? simpleTabs : tabs).map((t) => (
             <a key={t.id} href={t.to} className={section === t.id ? "active" : ""} aria-current={section === t.id ? "page" : undefined}>
               {t.label}
               {t.count !== undefined && <span className="nav-count">{t.count}</span>}
-              {t.id === "runs" && live > 0 && <span className="nav-live">● {live} active</span>}
+              {(t.id === "runs" || t.id === "history") && live > 0 && <span className="nav-live">● {live} {simple ? "converting" : "active"}</span>}
             </a>
           ))}
         </nav>
         <span className="grow" />
+        {simple && advanced && <a className="small" href={href({ page: "convert" })}>Advanced mode</a>}
+        {!simple && <a className="small" href={href({ page: "home" })}>‹ Back to {BRAND.name}</a>}
         <ThemeToggle />
       </header>
       <main className="content">
@@ -73,10 +91,18 @@ export default function App() {
               <div className="page">
                 <div className="empty">
                   <h2>Not signed in</h2>
-                  <p>Open <strong>Docling Studio</strong> again from Applications (Mac) or the Start menu (Windows); it signs you in.
+                  <p>Open <strong>{BRAND.name}</strong> again from Applications (Mac) or the Start menu (Windows); it signs you in.
                     If you started it from a terminal, use the sign-in link it printed.</p>
                 </div>
               </div>
+            ) : route.page === "home" ? (
+              <HomePage />
+            ) : route.page === "job" ? (
+              <JobPage key={route.id} id={route.id} />
+            ) : route.page === "history" ? (
+              <HistoryPage />
+            ) : route.page === "preferences" ? (
+              <PreferencesPage />
             ) : route.page === "convert" ? (
               <ToolPage key={"convert" + (route.from ?? "")} toolId="convert" from={route.from} />
             ) : route.page === "tool" ? (

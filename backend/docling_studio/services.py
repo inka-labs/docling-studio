@@ -2,7 +2,7 @@
 
 A service is a name and a URL (services.json); its API key, if it has one, is kept in the system
 keychain (macOS Keychain, Windows Credential Manager, Secret Service on Linux) under the service
-"docling-studio". A run gets them as DOCLING_SERVICE_URL / DOCLING_SERVICE_API_KEY, which the CLI
+brand.SLUG. A run gets them as DOCLING_SERVICE_URL / DOCLING_SERVICE_API_KEY, which the CLI
 reads, so the key is never on a command line, in a file or in the browser.
 """
 
@@ -14,9 +14,10 @@ import httpx
 import keyring
 import keyring.errors
 
+from . import brand
 from .core.store import home, read_json, write_json
 
-KEYCHAIN_SERVICE = "docling-studio"
+KEYCHAIN_SERVICE = brand.SLUG
 NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 _.-]{0,59}")
 
 

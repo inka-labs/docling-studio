@@ -8,7 +8,7 @@ An input is a small dict, saved with the run so it can be run again:
     {"kind": "url", "url": "https://arxiv.org/pdf/2206.01062"}      fetched by Docling
     {"kind": "run", "run": "<run id>", "file": "output/paper.json"} a file of an earlier run
 
-Uploads wait in ~/.docling-studio/uploads/<id>/ until a run takes them into its input/ folder;
+Uploads wait in uploads/<id>/ in the app's folder until a run takes them into its input/ folder;
 ones no run took are deleted after a day.
 """
 

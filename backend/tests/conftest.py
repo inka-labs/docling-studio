@@ -8,9 +8,10 @@ import pytest
 from fastapi.testclient import TestClient
 from keyring.backend import KeyringBackend
 
-from docling_studio import cli_schema
+from docling_studio import brand, cli_schema
 
 SCHEMA_CACHE = Path(__file__).parent / ".cli-schema-cache.json"
+BASE = "http://127.0.0.1:8767"
 
 
 class MemoryKeyring(KeyringBackend):
@@ -51,7 +52,7 @@ def docling_schema():
 @pytest.fixture(autouse=True)
 def studio_home(tmp_path, monkeypatch, docling_schema):
     home = tmp_path / "studio"
-    monkeypatch.setenv("DOCLING_STUDIO_HOME", str(home))
+    monkeypatch.setenv(brand.HOME_ENV, str(home))
     monkeypatch.setattr(cli_schema, "_memory", docling_schema)
     return home
 
@@ -69,7 +70,8 @@ def memory_keyring():
 # `docling convert` would for each source, and can fail or take its time.
 FAKE_DOCLING = textwrap.dedent(
     """\
-    import os, sys, time
+    import json, os, sys, time
+    from conftest_document import sample_document
     from pathlib import Path
     args = sys.argv[1:]
     print("args:", " ".join(args), flush=True)
@@ -80,8 +82,9 @@ FAKE_DOCLING = textwrap.dedent(
     sources = [a for a in args[1:] if Path(a).is_file()]
     for src in sources:
         stem = Path(src).stem
+        (out / f"{stem}.json").write_text(json.dumps(sample_document(stem)))
         (out / f"{stem}.md").write_text("# " + stem)
-        (out / f"{stem}.json").write_text('{"schema_name": "DoclingDocument", "name": "%s", "texts": [], "pages": {}}' % stem)
+        (out / f"{stem}.txt").write_text(stem)
         (out / "debug" / f"debug_{stem}").mkdir(parents=True, exist_ok=True)
         (out / "debug" / f"debug_{stem}" / "layout_page_1.png").write_bytes(b"png")
         print(f"INFO docling.document_converter: Finished converting document {Path(src).name} in 0.10 sec.", flush=True)
@@ -98,6 +101,7 @@ def fake_docling(tmp_path, monkeypatch):
     script = tmp_path / "fake_docling.py"
     script.write_text(FAKE_DOCLING)
     monkeypatch.setattr("docling_studio.runs.RunManager.command", staticmethod(lambda tool, args: [sys.executable, str(script), *args]))
+    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).parent))  # the fake's sample document
     return script
 
 
@@ -106,7 +110,7 @@ def client():
     from docling_studio.app import COOKIE, create_app
 
     app = create_app()
-    with TestClient(app, base_url="http://127.0.0.1:8766") as c:
+    with TestClient(app, base_url=BASE) as c:
         c.cookies.set(COOKIE, app.state.token)
         c.app_token = app.state.token
         yield c

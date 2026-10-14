@@ -1,16 +1,16 @@
 #!/bin/bash
-# Removes Docling Studio from this Mac. Your data (~/.docling-studio) is kept unless you say otherwise.
+# Removes Paperlift from this Mac. Your data (~/.paperlift) is kept unless you say otherwise.
 set -uo pipefail
 
-ROOT="$HOME/Library/Application Support/Docling Studio"
-APP="$HOME/Applications/Docling Studio.app"
+ROOT="$HOME/Library/Application Support/Paperlift"
+APP="$HOME/Applications/Paperlift.app"
 PY="$ROOT/app/.pixi/envs/default/bin/python"
-DATA="$HOME/.docling-studio"
+DATA="$HOME/.paperlift"
 
 clear 2>/dev/null || true
-echo "Uninstall Docling Studio"
+echo "Uninstall Paperlift"
 echo "─────────────────────────"
-read -rp "Remove Docling Studio from this Mac? [y/N] " yes
+read -rp "Remove Paperlift from this Mac? [y/N] " yes
 [[ "$yes" =~ ^[Yy] ]] || { echo "Nothing was changed."; exit 0; }
 
 if [ -x "$PY" ]; then
@@ -34,7 +34,7 @@ if [ -d "$DATA" ]; then
   fi
 fi
 echo
-echo "Saved API keys are in your Keychain under \"docling-studio\" (Keychain Access → search docling-studio)."
+echo "Saved API keys are in your Keychain under \"paperlift\" (Keychain Access → search paperlift)."
 echo "Your documents and Docling's downloaded models (~/.cache) weren't touched."
 echo
 read -n1 -rsp "Press any key to close this window."

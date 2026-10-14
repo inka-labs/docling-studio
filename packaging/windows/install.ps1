@@ -1,13 +1,13 @@
-# Installs, or updates, Docling Studio for this Windows user. Run by "Install Docling Studio.cmd".
+# Installs, or updates, Paperlift for this Windows user. Run by "Install Paperlift.cmd".
 #
-#   %LOCALAPPDATA%\Docling Studio\    app\ (Studio and its environment), bin\pixi.exe, uninstall.ps1
+#   %LOCALAPPDATA%\Paperlift\    app\ (Studio and its environment), bin\pixi.exe, uninstall.ps1
 #   Start menu + Desktop shortcut      opens Studio (starts it if needed, signs you in)
-#   %USERPROFILE%\.docling-studio\    your runs, presets, settings (kept on update)
+#   %USERPROFILE%\.paperlift\    your runs, presets, settings (kept on update)
 #
 # No administrator rights; listed under Settings > Apps for uninstalling. Built by packaging/build_release.py.
 # ASCII only: Windows PowerShell 5.1 misreads UTF-8 scripts without a BOM.
 #
-# Studio's "Update now" runs it hidden with DOCLING_STUDIO_UNATTENDED=1: no prompts, and Studio is
+# Studio's "Update now" runs it hidden with PAPERLIFT_UNATTENDED=1: no prompts, and Studio is
 # started again in the background (the browser tab that asked for the update reconnects).
 param([Parameter(Mandatory = $true)][string]$Source)
 
@@ -15,14 +15,14 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'  # Invoke-WebRequest is very slow with its progress bar
 $PixiVersion = '__PIXI_VERSION__'
 $StudioVersion = '__STUDIO_VERSION__'
-$Root = Join-Path $env:LOCALAPPDATA 'Docling Studio'
+$Root = Join-Path $env:LOCALAPPDATA 'Paperlift'
 $App = Join-Path $Root 'app'
 $Bin = Join-Path $Root 'bin'
 $Pixi = Join-Path $Bin 'pixi.exe'
 $EnvDir = Join-Path $App '.pixi\envs\default'
 $Py = Join-Path $EnvDir 'python.exe'
 $Pyw = Join-Path $EnvDir 'pythonw.exe'
-$Unattended = [bool]$env:DOCLING_STUDIO_UNATTENDED
+$Unattended = [bool]$env:PAPERLIFT_UNATTENDED
 
 function Finish {
     if ($Unattended) { return }
@@ -42,10 +42,10 @@ function Fail([string]$Message) {
 
 try {
     if (-not $Unattended) { Clear-Host }
-    Write-Host "Docling Studio $StudioVersion ($(Get-Date))"
+    Write-Host "Paperlift $StudioVersion ($(Get-Date))"
     Write-Host '------------------------------'
     $Source = $Source.TrimEnd('\')
-    if (-not (Test-Path (Join-Path $Source 'pixi.toml'))) { Fail 'Open this from the unzipped Docling Studio folder (its app folder is missing).' }
+    if (-not (Test-Path (Join-Path $Source 'pixi.toml'))) { Fail 'Open this from the unzipped Paperlift folder (its app folder is missing).' }
     New-Item -ItemType Directory -Force -Path $Bin | Out-Null
 
     # 1. pixi: installs Python and packages, for Studio and Docling.
@@ -77,25 +77,25 @@ try {
     if ($LASTEXITCODE -ne 0) { Fail 'Installing the packages failed (see above). Check your internet connection and try again.' }
 
     # 5. Shortcuts: Start menu and Desktop.
-    Write-Host '-> Adding Docling Studio to the Start menu and Desktop...'
+    Write-Host '-> Adding Paperlift to the Start menu and Desktop...'
     $shell = New-Object -ComObject WScript.Shell
     foreach ($dir in @([Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('Desktop'))) {
-        $link = $shell.CreateShortcut((Join-Path $dir 'Docling Studio.lnk'))
+        $link = $shell.CreateShortcut((Join-Path $dir 'Paperlift.lnk'))
         $link.TargetPath = $Pyw
         $link.Arguments = '-X utf8 -m docling_studio.launch'
         $link.WorkingDirectory = $App
         $link.IconLocation = (Join-Path $App 'packaging\windows\icon.ico')
-        $link.Description = 'Open Docling Studio'
+        $link.Description = 'Open Paperlift'
         $link.Save()
     }
 
     # 6. Settings > Apps: an entry to uninstall it.
     Copy-Item -Force (Join-Path $App 'packaging\windows\uninstall.ps1') (Join-Path $Root 'uninstall.ps1')
-    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\DoclingStudio'
+    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Paperlift'
     New-Item -Force -Path $key | Out-Null
     $uninstall = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $Root 'uninstall.ps1') + '"'
     $values = @{
-        DisplayName = 'Docling Studio'; DisplayVersion = $StudioVersion; InstallLocation = $Root
+        DisplayName = 'Paperlift'; DisplayVersion = $StudioVersion; InstallLocation = $Root
         DisplayIcon = (Join-Path $App 'packaging\windows\icon.ico'); UninstallString = $uninstall
     }
     foreach ($name in $values.Keys) { Set-ItemProperty -Path $key -Name $name -Value $values[$name] }
@@ -104,12 +104,12 @@ try {
 
     Write-Host ''
     if ($Unattended) {
-        Write-Host "Docling Studio $StudioVersion is installed. Starting it again..."
+        Write-Host "Paperlift $StudioVersion is installed. Starting it again..."
         Start-Process -FilePath $Pyw -ArgumentList '-X', 'utf8', '-m', 'docling_studio.launch', '--no-browser' -WorkingDirectory $App -Wait
         exit 0
     }
-    Write-Host "Docling Studio $StudioVersion is installed. Opening it in your browser..." -ForegroundColor Green
-    Write-Host '  Next time, open Docling Studio from the Start menu or the Desktop.'
+    Write-Host "Paperlift $StudioVersion is installed. Opening it in your browser..." -ForegroundColor Green
+    Write-Host '  Next time, open Paperlift from the Start menu or the Desktop.'
     Start-Process -FilePath $Pyw -ArgumentList '-X', 'utf8', '-m', 'docling_studio.launch' -WorkingDirectory $App
     Start-Sleep -Seconds 3
 }

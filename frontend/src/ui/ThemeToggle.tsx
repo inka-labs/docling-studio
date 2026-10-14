@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 type Theme = "light" | "dark" | "system";
-const KEY = "docling-studio.theme";
+const KEY = "paperlift.theme";
 const NEXT: Record<Theme, Theme> = { system: "light", light: "dark", dark: "system" };
 const LABEL: Record<Theme, string> = { system: "Auto", light: "Light", dark: "Dark" };
 

@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 
 export type Route =
+  // the everyday app
+  | { page: "home" }
+  | { page: "job"; id: string }
+  | { page: "history" }
+  | { page: "preferences" }
+  // Advanced mode: every Docling option
   | { page: "convert"; from?: string }
   | { page: "tools" }
   /** one tool's form; from: an earlier run to start from */
@@ -26,7 +32,10 @@ export function parse(hash: string): Route {
   if (parts[0] === "models") return { page: "models" };
   if (parts[0] === "services") return { page: "services" };
   if (parts[0] === "settings") return { page: "settings" };
-  return { page: "convert", from };
+  if (parts[0] === "jobs" && parts[1]) return { page: "job", id: parts[1] };
+  if (parts[0] === "history") return { page: "history" };
+  if (parts[0] === "preferences") return { page: "preferences" };
+  return { page: "home" };
 }
 
 export function href(route: Route): string {
@@ -39,6 +48,10 @@ export function href(route: Route): string {
       if (route.from) qs.set("from", route.from);
       if (route.file) qs.set("file", route.file);
       return `#/tools/${encodeURIComponent(route.id)}${qs.size ? `?${qs}` : ""}`;
+    case "home":
+      return "#/";
+    case "job":
+      return `#/jobs/${route.id}`;
     case "run":
       if (route.doc) qs.set("doc", route.doc);
       if (route.view) qs.set("view", route.view);

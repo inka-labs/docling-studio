@@ -77,9 +77,28 @@ export type Run = {
   ended: string | null;
   exit_code: number | null;
   error: string | null;
-  progress: { done: number; failed: number; total: number | null; processed?: number };
+  progress: { done: number; failed: number; total: number | null; processed?: number; finished?: string[]; phase?: "starting" | "models" | "converting" | "saving" };
   outputs?: { count: number; size: number; documents: number };
+  /** a job's (simple.py): what it was asked to save, and the files it saved */
+  finish?: { kind: "simple"; formats: string[]; folder: string } | null;
+  delivered?: Delivered[] | null;
 };
+
+export type Delivered = { document: string; format: string; path: string | null; size?: number; note: string | null };
+export type Plan = { name: string; paid: boolean; features: Record<string, boolean>; message: string };
+export type JobOptions = {
+  name: string;
+  tagline: string;
+  formats: Record<string, string>;
+  languages: Record<string, string>;
+  scan: Record<string, string>;
+  save_to: string;
+  /** the same, shortened for showing (~/Documents/…) */
+  save_to_label: string;
+  plan: Plan;
+  native_dialogs: boolean;
+};
+export type JobRequest = { inputs: Input[]; formats: string[]; scan: string; language: string; pages: string; pictures: "keep" | "describe" | "drop" };
 
 export type OutputFile = { path: string; size: number; kind: string };
 export type OutputDocument = { name: string; files: string[]; kinds: string[] };
@@ -116,7 +135,7 @@ export type Preset = { id: string; tool: string; name: string; values: Values; c
 export type Service = { name: string; url: string; has_key: boolean; created: string; updated: string };
 export type Model = { where: "docling" | "huggingface"; name: string; folder: string; path: string; size: number; docling: boolean };
 export type Plugin = { name: string; value: string; package: string | null; version: string | null; builtin: boolean };
-export type Settings = { max_parallel_runs: number; default_verbosity: number; keep_runs_days: number };
+export type Settings = { max_parallel_runs: number; default_verbosity: number; keep_runs_days: number; save_to: string };
 export type Version = { version: string; platform: string; bundled: boolean; home: string; autostart: { supported: boolean; enabled: boolean } };
 
 let onUnauthorized: () => void = () => {};
@@ -197,6 +216,14 @@ export const api = {
 
   models: () => call<{ models: Model[]; roots: Record<string, string>; total: number }>("GET", "/api/models"),
   deleteModel: (m: Model) => call<void>("DELETE", `/api/models/${m.where}/${encodeURIComponent(m.folder)}`),
+
+  jobOptions: () => call<JobOptions>("GET", "/api/jobs/options"),
+  startJob: (req: JobRequest) => call<Run>("POST", "/api/jobs", req),
+  plan: () => call<Plan>("GET", "/api/plan"),
+  openFile: (id: string, path: string) => call<{ ok: boolean }>("POST", `/api/runs/${id}/open`, { path }),
+  showFile: (id: string, path: string) => call<{ ok: boolean }>("POST", `/api/runs/${id}/show`, { path }),
+  chooseFiles: () => call<Input[]>("POST", "/api/choose/files"),
+  chooseFolder: (purpose: "save_to" | "input") => call<{ path: string | null }>("POST", "/api/choose/folder", { purpose }),
 
   settings: () => call<Settings>("GET", "/api/settings"),
   saveSettings: (s: Partial<Settings>) => call<Settings>("PUT", "/api/settings", s),

@@ -1,6 +1,6 @@
 """Running the Docling CLIs.
 
-Each run gets ~/.docling-studio/runs/<run id>/ holding run.json (what was asked and how it went),
+Each run gets runs/<run id>/ in the app's folder, holding run.json (what was asked and how it went),
 log.txt (everything the command printed, secrets blanked out), input/ (uploaded files and files
 taken from earlier runs) and output/ (what the command wrote; it also runs there, so Docling's
 debug pictures land in output/debug/).
@@ -31,6 +31,9 @@ ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07")
 REDACTED = "••••••"
 FINISHED_DOC = re.compile(r"Finished converting document (.+?) in ([\d.]+) sec")
 PROCESSED = re.compile(r"Processed (\d+) docs?, of which (\d+) failed")
+# what a run is doing, for people who don't read logs: fetching models (the first time), then reading
+MODELS = re.compile(r"Fetching model|Downloading|Download size|download_file", re.I)
+CONVERTING = re.compile(r"Processing document|Going to convert")
 # Docling's output files, by the end of their name (longest first): what kind of result each is.
 KINDS = [
     (".chunks.jsonl", "chunks"), (".dclg.xml", "doclang"), (".md", "markdown"), (".html", "html"),
@@ -233,9 +236,11 @@ class RunManager:
             "values": cli_schema.without_secrets(values),
             "had_secrets": sorted(k for k in cli_schema.SECRETS if not cli_schema._empty(values.get(k))),
             "inputs": checked, "service": service,
+            # what to do with the results once the command is done (simple.py: save Word, Excel…)
+            "finish": request.get("finish"), "delivered": None,
             "command": redact(_quote(shown), secrets),
             "created": _now(), "started": None, "ended": None, "exit_code": None, "error": None,
-            "progress": {"done": 0, "failed": 0, "total": self._count(checked)}, "pid": None,
+            "progress": {"done": 0, "failed": 0, "total": self._count(checked), "finished": [], "phase": "starting"}, "pid": None,
         }
         argv = self.command(tool, [*cli_schema.subcommand(tool), *positional, *options, *managed])
         with self._lock:
@@ -345,6 +350,7 @@ class RunManager:
             code = proc.wait()
         finally:
             log.close()
+        delivered, finish_error = self._finish(rid, run_dir, code, rid in self._cancelled)
         with self._lock:
             self._procs.pop(rid, None)
             self._secrets.pop(rid, None)
@@ -355,11 +361,31 @@ class RunManager:
             progress = self._runs[rid]["progress"]
             if status == "succeeded" and progress.get("failed"):
                 status = "partial"  # Docling carried on past documents it couldn't convert
+            if finish_error and status in ("succeeded", "partial"):
+                status, last_error = "failed", finish_error
             self._update(rid, status=status, exit_code=code, ended=_now(), pid=None,
                          error=None if status in ("succeeded", "cancelled") else (last_error or f"Stopped with exit code {code}."),
                          outputs={"count": len(outputs["files"]), "size": outputs["total_size"],
-                                  "documents": len(outputs["documents"])})
+                                  "documents": len(outputs["documents"])},
+                         delivered=delivered)
             self._wake.notify_all()
+
+    def _finish(self, rid: str, run_dir: Path, code: int, cancelled: bool) -> tuple[list | None, str | None]:
+        """A job's finish step, once Docling has succeeded: (files saved, or why that failed)."""
+        finish = self._runs[rid].get("finish")
+        if not finish or code != 0 or cancelled:
+            return None, None
+        from . import simple
+        with open(run_dir / "log.txt", "ab") as log:
+            def write(text: str) -> None:
+                log.write((text + "\n").encode("utf-8"))
+            with self._lock:
+                self._update(rid, progress={**self._runs[rid]["progress"], "phase": "saving"})
+            try:
+                return simple.deliver(finish, run_dir / "output", write), None
+            except simple.JobError as e:
+                write(str(e))
+                return None, str(e)
 
     def _pump(self, rid: str, proc: subprocess.Popen, log, secrets: list[str]) -> str | None:
         """Copy the command's output to the log, line by line (a progress bar's \\r updates are kept
@@ -384,8 +410,17 @@ class RunManager:
         log.write((line + "\n").encode("utf-8"))
         changes = {}
         progress = dict(self._runs[rid]["progress"])
-        if FINISHED_DOC.search(line):
+        if m := FINISHED_DOC.search(line):
             progress["done"] += 1
+            progress["finished"] = [*progress.get("finished", []), m.group(1)]
+            progress["phase"] = "converting"
+            changes["progress"] = progress
+        elif MODELS.search(line) and progress.get("phase") != "converting":
+            if progress.get("phase") != "models":
+                progress["phase"] = "models"
+                changes["progress"] = progress
+        elif CONVERTING.search(line) and progress.get("phase") != "converting":
+            progress["phase"] = "converting"
             changes["progress"] = progress
         elif m := PROCESSED.search(line):
             progress.update(processed=int(m.group(1)), failed=int(m.group(2)))

@@ -4,8 +4,10 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from docling_studio import cli_schema
+from docling_studio import brand, cli_schema
 from docling_studio.runs import document_key, index_outputs
+
+from conftest import BASE
 
 
 def wait(client, rid, timeout=30):
@@ -30,12 +32,12 @@ def convert(client, pdf, **values):
 
 
 def test_api_needs_session_cookie(client):
-    anonymous = TestClient(client.app, base_url="http://127.0.0.1:8766")
+    anonymous = TestClient(client.app, base_url=BASE)
     assert anonymous.get("/api/runs").status_code == 401
 
 
 def test_auth_link_sets_cookie(client):
-    fresh = TestClient(client.app, base_url="http://127.0.0.1:8766")
+    fresh = TestClient(client.app, base_url=BASE)
     assert fresh.get("/auth?token=wrong", follow_redirects=False).status_code == 401
     resp = fresh.get(f"/auth?token={client.app_token}", follow_redirects=False)
     assert resp.status_code == 303
@@ -51,7 +53,7 @@ def test_foreign_host_and_origin_refused(client):
 def test_run_files_need_their_key(client, fake_docling, pdf):
     run = wait(client, convert(client, pdf)["id"])
     base = client.get(f"/api/runs/{run['id']}").json()["file_base"]
-    anonymous = TestClient(client.app, base_url="http://127.0.0.1:8766")
+    anonymous = TestClient(client.app, base_url=BASE)
     assert anonymous.get(base + "output/report.md").text == "# report"
     assert anonymous.get(f"/files/{run['id']}/{'0' * 32}/output/report.md").status_code == 404
     assert anonymous.get(base + "../../session_token").status_code == 404
@@ -209,7 +211,7 @@ def test_serialize_writes_into_the_run(client, fake_docling, pdf):
 def test_doc_summary(client, fake_docling, pdf):
     run = wait(client, convert(client, pdf))
     summary = client.get(f"/api/runs/{run['id']}/doc", params={"file": "output/report.json"}).json()
-    assert summary["name"] == "report" and summary["tables"] == 0
+    assert summary["name"] == "report" and summary["tables"] == 1 and summary["pictures"] == 1
     assert client.get(f"/api/runs/{run['id']}/doc", params={"file": "output/report.md"}).status_code == 400
 
 
@@ -228,7 +230,7 @@ def test_service_key_stays_in_keychain(client, fake_docling, pdf, studio_home, m
     assert "service: http://localhost:5001 ••••••" in log and "sk-123" not in log
     # renaming keeps the key; "" removes it
     client.put("/api/services/gpu box", json={"name": "gpu", "url": "http://localhost:5001", "api_key": None})
-    assert memory_keyring.items == {("docling-studio", "service:gpu"): "sk-123"}
+    assert memory_keyring.items == {(brand.SLUG, "service:gpu"): "sk-123"}
     client.put("/api/services/gpu", json={"name": "gpu", "url": "http://localhost:5001", "api_key": ""})
     assert memory_keyring.items == {}
 

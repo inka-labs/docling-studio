@@ -1,7 +1,7 @@
 # Packaging: installers for Mac and Windows
 
 For people who don't use a terminal: download a zip, double-click the installer, then open
-**Docling Studio** from Applications or the Start menu. No pixi, git, clone or build step on their side.
+**Paperlift** from Applications or the Start menu. No pixi, git, clone or build step on their side.
 
 ## Make a release
 
@@ -9,7 +9,7 @@ macOS needs 14 Sonoma or later on Apple silicon; Windows needs x64 (see `pixi.to
 
     pixi run release
 
-That builds the UI, then writes `packaging/dist/Docling-Studio-<version>-mac.zip` and `-windows.zip` (under 1 MB each).
+That builds the UI, then writes `packaging/dist/Paperlift-<version>-mac.zip` and `-windows.zip` (under 1 MB each).
 The version comes from `backend/pyproject.toml`. Bump it there before each release, since the installers
 and **Settings** show it. Put both zips where your users can download them without signing in, for example
 a public GitHub release.
@@ -18,8 +18,8 @@ Each zip contains:
 
 | | |
 |---|---|
-| `Install Docling Studio.command` / `.cmd` | the installer to double-click |
-| `Uninstall Docling Studio.command` | Mac only (on Windows: Settings → Apps) |
+| `Install Paperlift.command` / `.cmd` | the installer to double-click |
+| `Uninstall Paperlift.command` | Mac only (on Windows: Settings → Apps) |
 | `Read me first.txt` | install steps, including getting past the "unidentified developer" / SmartScreen warning |
 | `app/` | Studio: `backend/` (no tests), `frontend/dist/` (built UI), `pixi.toml`, `pixi.lock`, `packaging/` |
 
@@ -34,20 +34,20 @@ No administrator rights are needed, and only the user's own folders are touched:
 5. It adds the launcher, opens Studio, and leaves the uninstaller behind.
 
 To update, people download the newer zip and run its installer the same way; their runs, presets and services
-are kept. (Ecoscope Studio's in-app *Update now* isn't part of Docling Studio yet. The installers already accept
-`DOCLING_STUDIO_UNATTENDED=1` for it.)
+are kept. (Ecoscope Studio's in-app *Update now* isn't part of Paperlift yet. The installers already accept
+`PAPERLIFT_UNATTENDED=1` for it.)
 
 | | Mac | Windows |
 |---|---|---|
-| Studio's folder | `~/Library/Application Support/Docling Studio/` | `%LOCALAPPDATA%\Docling Studio\` |
-| Launcher | `~/Applications/Docling Studio.app` | Start menu + Desktop shortcut |
-| Uninstall | `Uninstall Docling Studio.command` | Settings → Apps → Docling Studio |
-| Data (kept across updates) | `~/.docling-studio/` | `%USERPROFILE%\.docling-studio\` |
+| Studio's folder | `~/Library/Application Support/Paperlift/` | `%LOCALAPPDATA%\Paperlift\` |
+| Launcher | `~/Applications/Paperlift.app` | Start menu + Desktop shortcut |
+| Uninstall | `Uninstall Paperlift.command` | Settings → Apps → Paperlift |
+| Data (kept across updates) | `~/.paperlift/` | `%USERPROFILE%\.paperlift\` |
 
 The launcher runs `python -m docling_studio.launch` from Studio's environment
 ([launch.py](../backend/docling_studio/launch.py)). If Studio isn't running, it starts it in the background,
 logging to `studio.log`. Then it opens the browser at the sign-in link. Opening it again only opens the browser.
-**Settings** has *Start Docling Studio when I log in* and *Quit Docling Studio*.
+**Settings** has *Start Paperlift when I log in* and *Quit Paperlift*.
 
 ## Files here
 
@@ -59,10 +59,10 @@ logging to `studio.log`. Then it opens the browser at the sign-in link. Opening 
 
 ## Testing a build without touching your own Studio
 
-    unzip it with:  ditto -x -k packaging/dist/Docling-Studio-<v>-mac.zip /tmp/try
-    env HOME=/tmp/try/home DOCLING_STUDIO_PORT=8799 BROWSER=true "/tmp/try/Docling Studio <v>/Install Docling Studio.command"
+    unzip it with:  ditto -x -k packaging/dist/Paperlift-<v>-mac.zip /tmp/try
+    env HOME=/tmp/try/home PAPERLIFT_PORT=8799 BROWSER=true "/tmp/try/Paperlift <v>/Install Paperlift.command"
 
-`DOCLING_STUDIO_PORT` runs it on another port than your own Studio (8766). On Windows, try it on a real machine
+`PAPERLIFT_PORT` runs it on another port than your own Studio (8766). On Windows, try it on a real machine
 or VM: `pwsh` can parse the scripts on a Mac, but can't run them.
 
 ## Not signed (yet)
