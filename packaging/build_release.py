@@ -1,6 +1,6 @@
 """Build the downloads for people who don't use a terminal:
 
-    pixi run release      # builds the UI, then packaging/dist/Paperlift-<version>-mac.zip and -windows.zip
+    pixi run release      # builds the UI, then packaging/dist/DocuFlow-<version>-mac.zip and -windows.zip
 
 Each zip holds an installer to double-click, "Read me first.txt" and app/: Studio's code, its UI
 already built, and pixi.toml / pixi.lock (the installer installs exactly the locked packages). The
@@ -63,61 +63,61 @@ def add(zf: zipfile.ZipFile, name: str, data: bytes, executable: bool = False) -
 
 def read_me(system: str, version: str) -> str:
     if system == "mac":
-        text = f"""Paperlift {version} for Mac
+        text = f"""DocuFlow {version} for Mac
 ================================
 
 INSTALL
-1. Double-click "Install Paperlift".
+1. Double-click "Install DocuFlow".
    The first time, macOS may say it "can't be opened" or "could not be verified". Then:
-     - right-click (or Control-click) "Install Paperlift" and choose Open, then Open again; or
+     - right-click (or Control-click) "Install DocuFlow" and choose Open, then Open again; or
      - open System Settings > Privacy & Security, scroll down and click "Open Anyway".
    This only happens because the installer isn't registered with Apple; it doesn't need your password.
 2. A window shows the progress. The first install downloads about 2 GB and takes a few minutes.
-3. Studio opens in your browser. From now on, open "Paperlift" from Applications
-   (or press Cmd+Space and type Paperlift).
+3. Studio opens in your browser. From now on, open "DocuFlow" from Applications
+   (or press Cmd+Space and type DocuFlow).
 
 UPDATE
-Download the newer Paperlift and run its installer the same way. Your runs, presets,
+Download the newer DocuFlow and run its installer the same way. Your runs, presets,
 settings and services are kept.
 
 GOOD TO KNOW
-- Paperlift runs only on this computer; your documents never leave it (unless you add a web
+- DocuFlow runs only on this computer; your documents never leave it (unless you add a web
   address to convert).
 - The first install downloads Docling and PyTorch (about 2 GB). The first conversion also
   downloads Docling's models; Models > Download models fetches them ahead of time.
 - Needs macOS 14 Sonoma or later on an Apple silicon Mac (M1 or newer).
-- To have it open when you log in: Settings > "Open Paperlift when I log in".
+- To have it open when you log in: Settings > "Open DocuFlow when I log in".
 
 UNINSTALL
-Studio > Settings > Studio > Quit Studio, then double-click "Uninstall Paperlift"
-(in this folder, or in ~/Library/Application Support/Paperlift).
+Studio > Settings > Studio > Quit Studio, then double-click "Uninstall DocuFlow"
+(in this folder, or in ~/Library/Application Support/DocuFlow).
 """
     else:
-        text = f"""Paperlift {version} for Windows
+        text = f"""DocuFlow {version} for Windows
 ====================================
 
 INSTALL
-1. Double-click "Install Paperlift".
+1. Double-click "Install DocuFlow".
    Windows may show "Windows protected your PC": click "More info", then "Run anyway".
    If it asks "Do you want to run this file?", click Run.
    No administrator rights are needed.
 2. A window shows the progress. The first install downloads about 2 GB and takes a few minutes.
-3. Studio opens in your browser. From now on, open "Paperlift" from the Start menu or the Desktop.
+3. Studio opens in your browser. From now on, open "DocuFlow" from the Start menu or the Desktop.
 
 UPDATE
-Download the newer Paperlift and run its installer the same way. Your runs, presets,
+Download the newer DocuFlow and run its installer the same way. Your runs, presets,
 settings and services are kept.
 
 GOOD TO KNOW
-- Paperlift runs only on this computer; your documents never leave it (unless you add a web
+- DocuFlow runs only on this computer; your documents never leave it (unless you add a web
   address to convert).
 - The first install downloads Docling and PyTorch (about 2 GB). The first conversion also
   downloads Docling's models; Models > Download models fetches them ahead of time.
 - Needs 64-bit Windows 10 or 11.
-- To have it open when you log in: Settings > "Open Paperlift when I log in".
+- To have it open when you log in: Settings > "Open DocuFlow when I log in".
 
 UNINSTALL
-Windows Settings > Apps > Installed apps > Paperlift > Uninstall.
+Windows Settings > Apps > Installed apps > DocuFlow > Uninstall.
 """
     return text.replace("\n", "\r\n") if system == "windows" else text
 
@@ -130,10 +130,10 @@ def build() -> list[Path]:
     versions = {"STUDIO_VERSION": version, "PIXI_VERSION": pixi_version()}
     files = app_files()
     OUT.mkdir(parents=True, exist_ok=True)
-    top = f"Paperlift {version}"
+    top = f"DocuFlow {version}"
     built = []
     for system in ("mac", "windows"):
-        target = OUT / f"Paperlift-{version}-{system}.zip"
+        target = OUT / f"DocuFlow-{version}-{system}.zip"
         with zipfile.ZipFile(target, "w") as zf:
             for path in files:
                 rel = path.relative_to(REPO).as_posix()
@@ -146,9 +146,9 @@ def build() -> list[Path]:
             if system == "mac":
                 for script, name in (("install", "Install"), ("uninstall", "Uninstall")):
                     text = fill((REPO / "packaging" / "mac" / f"{script}.command").read_text(), versions)
-                    add(zf, f"{top}/{name} Paperlift.command", text.encode(), executable=True)
+                    add(zf, f"{top}/{name} DocuFlow.command", text.encode(), executable=True)
             else:
-                add(zf, f"{top}/Install Paperlift.cmd", (REPO / "packaging" / "windows" / "install.cmd").read_bytes())
+                add(zf, f"{top}/Install DocuFlow.cmd", (REPO / "packaging" / "windows" / "install.cmd").read_bytes())
         built.append(target)
     return built
 

@@ -1,23 +1,23 @@
 #!/bin/bash
-# Installs, or updates, Paperlift for this Mac user. Double-click it (first time: right-click → Open).
+# Installs, or updates, DocuFlow for this Mac user. Double-click it (first time: right-click → Open).
 #
-#   ~/Library/Application Support/Paperlift/   app/ (Studio and its environment), bin/pixi
-#   ~/Applications/Paperlift.app               opens Studio (starts it if needed, signs you in)
-#   ~/.paperlift/                              your runs, presets, settings (kept on update)
+#   ~/Library/Application Support/DocuFlow/   app/ (Studio and its environment), bin/pixi
+#   ~/Applications/DocuFlow.app               opens Studio (starts it if needed, signs you in)
+#   ~/.docuflow/                              your runs, presets, settings (kept on update)
 #
 # No administrator password; nothing outside your home folder is touched. Built by packaging/build_release.py.
 #
-# Studio's "Update now" runs it with PAPERLIFT_UNATTENDED=1: no prompts, and Studio is started
+# Studio's "Update now" runs it with DOCUFLOW_UNATTENDED=1: no prompts, and Studio is started
 # again in the background (the browser tab that asked for the update reconnects) rather than opened.
 set -euo pipefail
 
 PIXI_VERSION="__PIXI_VERSION__"
 STUDIO_VERSION="__STUDIO_VERSION__"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$HOME/Library/Application Support/Paperlift"
-APP="$HOME/Applications/Paperlift.app"
+ROOT="$HOME/Library/Application Support/DocuFlow"
+APP="$HOME/Applications/DocuFlow.app"
 PY="$ROOT/app/.pixi/envs/default/bin/python"
-UNATTENDED="${PAPERLIFT_UNATTENDED:-}"
+UNATTENDED="${DOCUFLOW_UNATTENDED:-}"
 
 finish() {
   [ -n "$UNATTENDED" ] && return
@@ -40,9 +40,9 @@ fail() {
 trap 'fail "The installation stopped (see the messages above). Check your internet connection and try again."' ERR
 
 [ -n "$UNATTENDED" ] || clear 2>/dev/null || true
-echo "Paperlift $STUDIO_VERSION ($(date))"
+echo "DocuFlow $STUDIO_VERSION ($(date))"
 echo "──────────────────────────────"
-[ -f "$HERE/app/pixi.toml" ] || fail "Open this from the unzipped Paperlift folder (its app folder is missing)."
+[ -f "$HERE/app/pixi.toml" ] || fail "Open this from the unzipped DocuFlow folder (its app folder is missing)."
 
 mkdir -p "$ROOT/bin"
 
@@ -74,7 +74,7 @@ echo "→ Installing Studio's Python and packages (a few minutes the first time)
 "$ROOT/bin/pixi" install --manifest-path "$ROOT/app/pixi.toml" --frozen
 
 # 5. The app you open it with.
-echo "→ Adding Paperlift to your Applications…"
+echo "→ Adding DocuFlow to your Applications…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$ROOT/app/packaging/mac/icon.icns" "$APP/Contents/Resources/icon.icns"
@@ -83,40 +83,40 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>Paperlift</string>
-  <key>CFBundleDisplayName</key><string>Paperlift</string>
-  <key>CFBundleIdentifier</key><string>app.paperlift.desktop.launcher</string>
+  <key>CFBundleName</key><string>DocuFlow</string>
+  <key>CFBundleDisplayName</key><string>DocuFlow</string>
+  <key>CFBundleIdentifier</key><string>app.docuflow.desktop.launcher</string>
   <key>CFBundleVersion</key><string>$STUDIO_VERSION</string>
   <key>CFBundleShortVersionString</key><string>$STUDIO_VERSION</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleExecutable</key><string>Paperlift</string>
+  <key>CFBundleExecutable</key><string>DocuFlow</string>
   <key>CFBundleIconFile</key><string>icon</string>
   <key>LSUIElement</key><true/>
 </dict>
 </plist>
 PLIST
-cat > "$APP/Contents/MacOS/Paperlift" <<LAUNCH
+cat > "$APP/Contents/MacOS/DocuFlow" <<LAUNCH
 #!/bin/bash
-# Opens Paperlift: starts it in the background if needed, then opens it in your browser.
+# Opens DocuFlow: starts it in the background if needed, then opens it in your browser.
 cd "$ROOT/app" && exec "$PY" -m docling_studio.launch
 LAUNCH
-chmod +x "$APP/Contents/MacOS/Paperlift"
+chmod +x "$APP/Contents/MacOS/DocuFlow"
 touch "$APP"
 
 # 6. The uninstaller, next to Studio.
-cp "$ROOT/app/packaging/mac/uninstall.command" "$ROOT/Uninstall Paperlift.command"
-chmod +x "$ROOT/Uninstall Paperlift.command"
+cp "$ROOT/app/packaging/mac/uninstall.command" "$ROOT/Uninstall DocuFlow.command"
+chmod +x "$ROOT/Uninstall DocuFlow.command"
 
 trap - ERR
 echo
 if [ -n "$UNATTENDED" ]; then
-  echo "✓ Paperlift $STUDIO_VERSION is installed. Starting it again…"
+  echo "✓ DocuFlow $STUDIO_VERSION is installed. Starting it again…"
   cd "$ROOT/app" && "$PY" -m docling_studio.launch --no-browser >/dev/null  # prints the sign-in link: not for the log
   echo "✓ Studio is running again."
   exit 0
 fi
-echo "✓ Paperlift $STUDIO_VERSION is installed. Opening it in your browser…"
-echo "  Next time, open Paperlift from Applications (or Spotlight: ⌘ Space, type Paperlift)."
+echo "✓ DocuFlow $STUDIO_VERSION is installed. Opening it in your browser…"
+echo "  Next time, open DocuFlow from Applications (or Spotlight: ⌘ Space, type DocuFlow)."
 open "$APP"
 sleep 2
 finish

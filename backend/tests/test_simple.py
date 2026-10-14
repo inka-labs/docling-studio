@@ -151,4 +151,4 @@ def test_plan_gates_jobs(client, fake_docling, pdf, monkeypatch):
 def test_options_for_the_page(client):
     o = client.get("/api/jobs/options").json()
     assert set(o["formats"]) == {"word", "excel", "markdown", "text", "html"}
-    assert o["save_to"].endswith("Documents/Paperlift") and o["save_to_label"] == "~/Documents/Paperlift"
+    assert o["save_to"].endswith("Documents/DocuFlow") and o["save_to_label"] == "~/Documents/DocuFlow"

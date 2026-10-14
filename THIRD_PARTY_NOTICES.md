@@ -1,6 +1,6 @@
-# Third-party notices for Paperlift
+# Third-party notices for DocuFlow
 
-Paperlift converts documents with [Docling](https://github.com/docling-project/docling) (MIT licence),
+DocuFlow converts documents with [Docling](https://github.com/docling-project/docling) (MIT licence),
 and includes the open-source software listed below, each under its own licence.
 
 ## Models

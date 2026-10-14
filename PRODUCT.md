@@ -1,8 +1,8 @@
-# Paperlift (working name): the `consumer` branch
+# DocuFlow (working name): the `consumer` branch
 
 A private desktop document converter for everyday users, built on Docling Studio. You drop in PDFs,
 scans or Office files, choose **Word, Excel, Markdown, plain text or a web page**, and press Convert.
-The files land in `~/Documents/Paperlift`, and nothing leaves the computer.
+The files land in `~/Documents/DocuFlow`, and nothing leaves the computer.
 
 `main` stays Docling Studio, the power tool. This branch adds the everyday app on top, and the whole
 of Docling Studio is still available in it under **Settings → Advanced mode**.
@@ -16,14 +16,15 @@ of Docling Studio is still available in it under **Settings → Advanced mode**.
 | Jobs | `simple.py` maps the few choices to Docling options, then saves the finished files without overwriting anything. Progress is in plain words, including the first-run model download. |
 | Results | Open in Word or Excel, Show in folder, an in-app preview, and friendly error messages with the log behind "Details". |
 | Pricing hook | `entitlements.py`: one `plan()` and the features a free plan could leave out (batch, folders, Word, Excel, AI picture descriptions, Advanced mode). It's checked on the server and shown in the UI. Everything is on ("Preview") until pricing is decided. |
-| Name in one place | `backend/docling_studio/brand.py` and `frontend/src/brand.ts`. The app has its own folder (`~/.paperlift`), keychain entry and port (8767), so it can sit next to Docling Studio. |
+| Name in one place | `backend/docling_studio/brand.py` and `frontend/src/brand.ts`. The app has its own folder (`~/.docuflow`), keychain entry and port (8767), so it can sit next to Docling Studio. |
 | Licences | `packaging/notices.py` writes `THIRD_PARTY_NOTICES.md` from the actual environment at each release, and the release zips include it. |
 
 ## Before charging money
 
-1. **Name.** "Paperlift" is a placeholder. Check trademarks, the .com and app-store names, then change
-   `brand.py`, `brand.ts` and the installers (`packaging/`). Don't put "Docling" in the product
-   name: it's an LF AI & Data project, so say "powered by Docling" instead.
+1. **Name.** "DocuFlow" is a placeholder and **can't be used to sell or publish**. It's already the name of an
+   AI document-and-email product (docu-flow.ai, SayApps, Inc.). Choose a name, then check trademarks, the domain
+   and app-store names, and change `brand.py`, `brand.ts` and the installers (`packaging/`). Don't put
+   "Docling" in the product name either: it's an LF AI & Data project, so say "powered by Docling" instead.
 2. **Licences, the items `THIRD_PARTY_NOTICES.md` flags:**
    - **readline (GPL-3.0)** comes in through conda's Python on macOS and Linux. It is the one to fix. Either use a
      Python built against libedit, or get legal advice on shipping it as is.
