@@ -249,6 +249,15 @@ def create_app() -> FastAPI:
         except (simple.JobError, RunError, cli_schema.SchemaError) as e:
             bad(e)
 
+    @app.post("/api/jobs/{rid}/formats")
+    def save_more(rid: str, payload: dict):
+        """Save a finished conversion as more formats, without converting again."""
+        run_or_404(rid)
+        try:
+            return runs.save_more(rid, list(payload.get("formats") or []))
+        except RunError as e:
+            bad(e)
+
     @app.get("/api/plan")
     def get_plan():
         return entitlements.plan()

@@ -1,6 +1,6 @@
-/** One conversion: what it's doing in plain words, then the files it saved, to open or find, and a
- *  look at the result. The technical log is there for when something goes wrong. */
-import { useEffect, useState } from "react";
+/** One conversion: what it's doing in plain words, then the files it saved, to open or find, a look
+ *  at the result, and saving it as another format without converting again. */
+import { useEffect, useRef, useState } from "react";
 import { api, changed, type Delivered, type RunDetail } from "../api";
 import { href, navigate } from "../router";
 import { confirm, toast } from "../ui/Dialogs";
@@ -9,10 +9,9 @@ import { FileIcon, FORMAT_INFO } from "./icons";
 
 const ACTIVE = ["queued", "running"];
 
-export default function Job({ id }: { id: string }) {
+export default function Job({ id, more }: { id: string; more?: boolean }) {
   const [run, setRun] = useState<RunDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [log, setLog] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ doc: string; url: string | null; error?: string } | null>(null);
   const [, tick] = useState(0);
 
@@ -60,10 +59,6 @@ export default function Job({ id }: { id: string }) {
     : run.status === "cancelled" ? "Stopped"
     : "That didn't work";
 
-  const showLog = async () => {
-    if (log !== null) return setLog(null);
-    setLog((await api.runLog(run.id, 0)).text);
-  };
   const openPreview = async (doc: string) => {
     setPreview({ doc, url: null });
     try {
@@ -112,7 +107,6 @@ export default function Job({ id }: { id: string }) {
       {(run.status === "failed" || run.status === "interrupted") && (
         <div className="banner error">
           {run.status === "interrupted" ? "The app was closed before this finished." : friendly(run.error)}
-          {"\n"}<button className="link" onClick={showLog}>{log === null ? "Show details" : "Hide details"}</button>
         </div>
       )}
 
@@ -149,16 +143,80 @@ export default function Job({ id }: { id: string }) {
       )}
       {notes.map((n, i) => <div key={i} className="banner warn">{n.document}, {FORMAT_INFO[n.format]?.ext ?? n.format}: {n.note}</div>)}
 
+      {["succeeded", "partial"].includes(run.status) && delivered.length > 0 && (
+        <SaveMore run={run} open={!!more} onSaved={(r) => setRun({ ...run, ...r })} />
+      )}
+
       {!active && (
         <div className="row" style={{ marginTop: 20 }}>
           <a className="button primary" href={href({ page: "home" })}>Convert another</a>
           {run.status !== "succeeded" && <a className="button" href={href({ page: "home" })}>Try again</a>}
           <span className="grow" />
-          {!["failed", "interrupted"].includes(run.status) && <button className="ghost" onClick={showLog}>{log === null ? "Details" : "Hide details"}</button>}
           <button className="ghost" onClick={remove}>Remove from history</button>
         </div>
       )}
-      {log !== null && <pre className="log" style={{ borderRadius: 10, marginTop: 12 }}>{log || "(nothing was printed)"}</pre>}
+    </div>
+  );
+}
+
+/** Save a finished conversion as more formats: made from what was already read, so it takes seconds. */
+function SaveMore({ run, open, onSaved }: { run: RunDetail; open: boolean; onSaved: (r: RunDetail) => void }) {
+  const [shown, setShown] = useState(open);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [picked, setPicked] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const made = new Set(run.finish?.formats ?? []);
+
+  useEffect(() => {
+    api.jobOptions().then((o) => setLabels(o.formats)).catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (open) setTimeout(() => box.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+  }, [open]);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.saveMore(run.id, picked);
+      onSaved(await api.run(updated.id));
+      toast(`Saved as ${picked.map((f) => FORMAT_INFO[f]?.ext ?? f).join(", ")}`);
+      setPicked([]);
+      setShown(false);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!shown) {
+    return <div style={{ marginTop: 14 }}><button onClick={() => setShown(true)}>Save as another format…</button></div>;
+  }
+  return (
+    <div className="card" ref={box} style={{ marginTop: 14 }}>
+      <div className="card-head"><h2>Save as another format</h2><span className="grow" /><button className="ghost small" onClick={() => setShown(false)}>Close</button></div>
+      <div className="card-body stack">
+        <p className="muted" style={{ margin: 0 }}>Made from what was already read, so it only takes a few seconds.</p>
+        <div className="format-grid">
+          {Object.entries(labels).map(([key, label]) => {
+            const on = picked.includes(key);
+            return (
+              <button key={key} className={`format${on ? " on" : ""}`} aria-pressed={on}
+                onClick={() => setPicked(on ? picked.filter((f) => f !== key) : [...picked, key])}>
+                <span className="format-badge" style={{ background: FORMAT_INFO[key]?.color }}>{FORMAT_INFO[key]?.ext}</span>
+                <span className="format-label">{label}</span>
+                <span className="format-note">{made.has(key) ? "Already saved: makes another copy" : FORMAT_INFO[key]?.note}</span>
+                {on && <span className="format-check" aria-hidden>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+        {error && <div className="banner error" style={{ margin: 0 }}>{error}</div>}
+        <div><button className="primary" onClick={save} disabled={!picked.length || saving}>{saving ? "Saving…" : "Save"}</button></div>
+      </div>
     </div>
   );
 }

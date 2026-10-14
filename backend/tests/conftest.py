@@ -71,7 +71,6 @@ def memory_keyring():
 FAKE_DOCLING = textwrap.dedent(
     """\
     import json, os, sys, time
-    from conftest_document import sample_document
     from pathlib import Path
     args = sys.argv[1:]
     print("args:", " ".join(args), flush=True)
@@ -82,7 +81,8 @@ FAKE_DOCLING = textwrap.dedent(
     sources = [a for a in args[1:] if Path(a).is_file()]
     for src in sources:
         stem = Path(src).stem
-        (out / f"{stem}.json").write_text(json.dumps(sample_document(stem)))
+        doc = json.loads(Path(os.environ["FAKE_SAMPLE"]).read_text())
+        (out / f"{stem}.json").write_text(json.dumps({**doc, "name": stem}))
         (out / f"{stem}.md").write_text("# " + stem)
         (out / f"{stem}.txt").write_text(stem)
         (out / "debug" / f"debug_{stem}").mkdir(parents=True, exist_ok=True)
@@ -96,12 +96,22 @@ FAKE_DOCLING = textwrap.dedent(
 )
 
 
+@pytest.fixture(scope="session")
+def sample_json(tmp_path_factory) -> Path:
+    """The sample document, made once (docling-core takes a moment to load)."""
+    from conftest_document import sample_document
+
+    path = tmp_path_factory.mktemp("sample") / "sample.json"
+    path.write_text(json.dumps(sample_document()))
+    return path
+
+
 @pytest.fixture
-def fake_docling(tmp_path, monkeypatch):
+def fake_docling(tmp_path, monkeypatch, sample_json):
     script = tmp_path / "fake_docling.py"
     script.write_text(FAKE_DOCLING)
     monkeypatch.setattr("docling_studio.runs.RunManager.command", staticmethod(lambda tool, args: [sys.executable, str(script), *args]))
-    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).parent))  # the fake's sample document
+    monkeypatch.setenv("FAKE_SAMPLE", str(sample_json))
     return script
 
 

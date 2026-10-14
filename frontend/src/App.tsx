@@ -98,7 +98,7 @@ export default function App() {
             ) : route.page === "home" ? (
               <HomePage />
             ) : route.page === "job" ? (
-              <JobPage key={route.id} id={route.id} />
+              <JobPage key={route.id} id={route.id} more={route.more} />
             ) : route.page === "history" ? (
               <HistoryPage />
             ) : route.page === "preferences" ? (

@@ -484,6 +484,27 @@ class RunManager:
             self._runs.pop(rid)
         shutil.rmtree(self.root / rid, ignore_errors=True)
 
+    def save_more(self, rid: str, formats: list[str]) -> dict:
+        """A finished job's results saved as more formats (simple.save_more), added to its files."""
+        from . import simple
+        run = self.get(rid)
+        if not run:
+            raise RunError("No such run.")
+        if not run.get("finish") or run["status"] not in ("succeeded", "partial"):
+            raise RunError("Only a finished conversion can be saved as another format.")
+        with open(self.root / rid / "log.txt", "ab") as log:
+            def write(text: str) -> None:
+                log.write((text + "\n").encode("utf-8"))
+            try:
+                added = simple.save_more(run, self.root / rid / "output", formats, write)
+            except simple.JobError as e:
+                raise RunError(str(e))
+        with self._lock:
+            current = self._runs[rid]
+            finish = {**current["finish"], "formats": list(dict.fromkeys([*current["finish"]["formats"], *formats]))}
+            self._update(rid, delivered=[*(current.get("delivered") or []), *added], finish=finish)
+        return self.get(rid)
+
     def rename(self, rid: str, title: str) -> dict:
         title = (title or "").strip()[:120]
         if not title:

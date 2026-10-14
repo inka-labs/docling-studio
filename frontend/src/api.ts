@@ -219,6 +219,7 @@ export const api = {
 
   jobOptions: () => call<JobOptions>("GET", "/api/jobs/options"),
   startJob: (req: JobRequest) => call<Run>("POST", "/api/jobs", req),
+  saveMore: (id: string, formats: string[]) => call<Run>("POST", `/api/jobs/${id}/formats`, { formats }),
   plan: () => call<Plan>("GET", "/api/plan"),
   openFile: (id: string, path: string) => call<{ ok: boolean }>("POST", `/api/runs/${id}/open`, { path }),
   showFile: (id: string, path: string) => call<{ ok: boolean }>("POST", `/api/runs/${id}/show`, { path }),

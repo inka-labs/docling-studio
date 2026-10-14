@@ -112,6 +112,25 @@ def test_job_saves_csv(client, fake_docling, pdf, save_to):
     assert "--to json" in run["command"]
 
 
+def test_save_finished_job_as_more_formats(client, fake_docling, pdf, save_to):
+    run = wait(client, client.post("/api/jobs", json={"inputs": [{"kind": "path", "path": str(pdf)}], "formats": ["word"]}).json()["id"])
+    resp = client.post(f"/api/jobs/{run['id']}/formats", json={"formats": ["csv", "markdown", "html"]})
+    assert resp.status_code == 200, resp.json()
+    after = resp.json()
+    assert after["finish"]["formats"] == ["word", "csv", "markdown", "html"]
+    assert [d["path"] for d in after["delivered"]] == [str(save_to / n) for n in ("report.docx", "report.csv", "report.md", "report.html")]
+    # the web page wasn't made by the conversion: Docling wrote it from the saved document
+    assert "Annual report" in (save_to / "report.html").read_text()
+    assert "<table" in (save_to / "report.html").read_text()
+
+
+def test_save_more_needs_a_finished_job(client, fake_docling, pdf, monkeypatch):
+    monkeypatch.setenv("FAKE_FAIL", "1")
+    run = wait(client, client.post("/api/jobs", json={"inputs": [{"kind": "path", "path": str(pdf)}], "formats": ["word"]}).json()["id"])
+    resp = client.post(f"/api/jobs/{run['id']}/formats", json={"formats": ["csv"]})
+    assert resp.status_code == 400 and "Only a finished conversion" in resp.json()["detail"]
+
+
 def test_job_choices_checked(client, fake_docling, pdf):
     path = [{"kind": "path", "path": str(pdf)}]
     for request, message in [

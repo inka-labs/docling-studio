@@ -179,9 +179,12 @@ def to_word(json_path: Path, out: Path) -> dict:
             para(text)
             counts["paragraphs"] += 1
 
+    # captions and footnotes go with their table or picture, wherever Docling put them in the tree
+    attached = {r for key in ("tables", "pictures") for t in doc.get(key, []) for r in _refs(t.get("captions")) | _refs(t.get("footnotes"))}
+
     def walk(node: dict, list_depth: int = 0):
         for item in _children(doc, node):
-            if item.get("content_layer", "body") != "body":
+            if item.get("content_layer", "body") != "body" or item.get("self_ref") in attached:
                 continue
             ref = item.get("self_ref", "")
             if ref.startswith("#/groups/"):
@@ -194,11 +197,12 @@ def to_word(json_path: Path, out: Path) -> dict:
                 walk(item, list_depth + 1 if item.get("label") in ("list", "ordered_list") else list_depth)
             elif ref.startswith("#/tables/") or ref.startswith("#/pictures/"):
                 (table if ref.startswith("#/tables/") else picture)(item)
-                # their captions and footnotes, not the text Docling read inside a picture
-                keep = _refs(item.get("captions")) | _refs(item.get("footnotes"))
-                for child in _children(doc, item):
-                    if child.get("self_ref") in keep:
-                        text_item(child, list_depth)
+                # its captions and footnotes (not the text Docling read inside a picture)
+                for key in ("captions", "footnotes"):
+                    for r in item.get(key) or []:
+                        attached_item = _resolve(doc, r.get("$ref", "")) if isinstance(r, dict) else None
+                        if attached_item:
+                            text_item(attached_item, list_depth)
             elif ref.startswith("#/texts/"):
                 text_item(item, list_depth)
                 walk(item, list_depth)  # a list item's nested list

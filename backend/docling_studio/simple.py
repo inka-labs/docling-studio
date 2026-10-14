@@ -9,6 +9,8 @@ what Open and Show in folder may open.
 
 import re
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 from . import brand, entitlements, exporters
@@ -160,3 +162,41 @@ def deliver(finish: dict, output: Path, log) -> list[dict]:
     if not delivered:
         raise JobError("Docling didn't produce a document to save.")
     return delivered
+
+
+def check_formats(formats: list[str]) -> list[str]:
+    formats = [f for f in formats if f in FORMATS]
+    if not formats:
+        raise JobError("Choose what to save it as.")
+    try:
+        for f in formats:
+            if f in entitlements.FEATURES:
+                entitlements.require(f)
+    except entitlements.NotAllowed as e:
+        raise JobError(str(e))
+    return formats
+
+
+def save_more(run: dict, output: Path, formats: list[str], log) -> list[dict]:
+    """Save a finished conversion as more formats, from what Docling already made: no second
+    conversion. Word, Excel and CSV come from its JSON; Markdown, text and the web page are written
+    from the JSON by Docling itself (reexport.py) when the conversion didn't make them."""
+    formats = check_formats(formats)
+    documents = [p for p in sorted(output.glob("*.json")) if "-timings-" not in p.name]
+    if not documents:
+        raise JobError("This conversion has nothing to save again. Convert the document again.")
+    needed = [FORMATS[f]["docling"] for f in formats if FORMATS[f]["docling"] != "json"]
+    image_mode = "placeholder" if (run.get("values") or {}).get("image_export_mode") == "placeholder" else "embedded"
+    for doc_json in documents:
+        missing = [k for k in needed if not (output / f"{doc_json.stem}{FORMATS[_by_docling(k)]['ext']}").is_file()]
+        if missing:
+            proc = subprocess.run([sys.executable, "-X", "utf8", "-m", "docling_studio.reexport", str(doc_json), str(output), image_mode, *missing],
+                                  capture_output=True, text=True, timeout=600)
+            if proc.returncode != 0:
+                log(proc.stderr[-2000:])
+                raise JobError(f"Couldn't make {', '.join(missing)} from {doc_json.stem}.")
+    return deliver({"formats": formats, "folder": str(save_folder())}, output, log)
+
+
+def _by_docling(kind: str) -> str:
+    return next(f for f, spec in FORMATS.items() if spec["docling"] == kind)

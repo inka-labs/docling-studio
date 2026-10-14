@@ -42,6 +42,11 @@ export default function History() {
                     </span>
                     <span className="muted small nowrap">{ago(r.created)}</span>
                   </a>
+                  {["succeeded", "partial"].includes(r.status) && saved > 0 && (
+                    <a className="button small another" href={href({ page: "job", id: r.id, more: true })} title="Save as another format, without converting again">
+                      Another format…
+                    </a>
+                  )}
                 </li>
               );
             })}
