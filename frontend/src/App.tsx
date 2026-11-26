@@ -11,6 +11,9 @@ const RunPage = lazy(() => import("./runs/Run"));
 const ModelsPage = lazy(() => import("./models/Models"));
 const ServicesPage = lazy(() => import("./services/Services"));
 const SettingsPage = lazy(() => import("./manage/Settings"));
+const LpoLab = lazy(() => import("./lpo/Lab"));
+const LpoExperiment = lazy(() => import("./lpo/Experiment"));
+const LpoReview = lazy(() => import("./lpo/Review"));
 
 type Summary = Awaited<ReturnType<typeof api.summary>>;
 
@@ -36,12 +39,13 @@ export default function App() {
   useEffect(() => setUnauthorizedHandler(() => setSignedOut(true)), []);
   const summary = useSummary(JSON.stringify(route));
 
-  const section = route.page === "tool" ? "tools" : route.page === "run" ? "runs" : route.page;
+  const section = route.page === "tool" ? "tools" : route.page === "run" ? "runs" : route.page.startsWith("lpo") ? "lpo" : route.page;
   const live = (summary?.running ?? 0) + (summary?.queued ?? 0);
   const tabs = [
     { id: "convert", label: "Convert", to: href({ page: "convert" }) },
     { id: "tools", label: "Tools", to: href({ page: "tools" }) },
     { id: "runs", label: "Runs", to: href({ page: "runs" }), count: summary?.runs },
+    { id: "lpo", label: "LPO lab", to: href({ page: "lpo" }) },
     { id: "models", label: "Models", to: href({ page: "models" }) },
     { id: "services", label: "Services", to: href({ page: "services" }), count: summary?.services || undefined },
     { id: "settings", label: "Settings", to: href({ page: "settings" }) },
@@ -87,6 +91,12 @@ export default function App() {
               <RunsPage />
             ) : route.page === "run" ? (
               <RunPage key={route.id} id={route.id} doc={route.doc} view={route.view} />
+            ) : route.page === "lpo" ? (
+              <LpoLab />
+            ) : route.page === "lpo-exp" ? (
+              <LpoExperiment key={route.id} id={route.id} />
+            ) : route.page === "lpo-doc" ? (
+              <LpoReview key={route.id + (route.exp ?? "")} id={route.id} exp={route.exp} />
             ) : route.page === "models" ? (
               <ModelsPage />
             ) : route.page === "services" ? (

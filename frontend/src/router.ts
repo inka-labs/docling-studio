@@ -9,7 +9,11 @@ export type Route =
   | { page: "run"; id: string; doc?: string; view?: string }
   | { page: "models" }
   | { page: "services" }
-  | { page: "settings" };
+  | { page: "settings" }
+  /** the LPO lab: test set and experiments; one experiment; one document's review */
+  | { page: "lpo" }
+  | { page: "lpo-exp"; id: string }
+  | { page: "lpo-doc"; id: string; exp?: string };
 
 export function parse(hash: string): Route {
   const [path, query = ""] = hash.replace(/^#\/?/, "").split("?");
@@ -23,6 +27,9 @@ export function parse(hash: string): Route {
   if (parts[0] === "tools") return { page: "tools" };
   if (parts[0] === "runs" && parts[1]) return { page: "run", id: parts[1], doc: qs.get("doc") ?? undefined, view: qs.get("view") ?? undefined };
   if (parts[0] === "runs") return { page: "runs" };
+  if (parts[0] === "lpo" && parts[1] === "experiments" && parts[2]) return { page: "lpo-exp", id: parts[2] };
+  if (parts[0] === "lpo" && parts[1] === "docs" && parts[2]) return { page: "lpo-doc", id: parts[2], exp: qs.get("exp") ?? undefined };
+  if (parts[0] === "lpo") return { page: "lpo" };
   if (parts[0] === "models") return { page: "models" };
   if (parts[0] === "services") return { page: "services" };
   if (parts[0] === "settings") return { page: "settings" };
@@ -43,6 +50,11 @@ export function href(route: Route): string {
       if (route.doc) qs.set("doc", route.doc);
       if (route.view) qs.set("view", route.view);
       return `#/runs/${route.id}${qs.size ? `?${qs}` : ""}`;
+    case "lpo-exp":
+      return `#/lpo/experiments/${encodeURIComponent(route.id)}`;
+    case "lpo-doc":
+      if (route.exp) qs.set("exp", route.exp);
+      return `#/lpo/docs/${encodeURIComponent(route.id)}${qs.size ? `?${qs}` : ""}`;
     default:
       return `#/${route.page}`;
   }

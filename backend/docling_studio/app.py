@@ -59,14 +59,20 @@ def create_app() -> FastAPI:
     inputs.sweep_uploads()
     threading.Thread(target=cli_schema.warm, daemon=True, name="studio-schema").start()
 
+    from .lpo import api as lpo_api
+
+    lab = lpo_api.Lab()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         yield
         runs.stop_all()
+        lab.stop()
 
     app = FastAPI(title="Docling Studio", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.token = token
     app.state.runs = runs
+    app.state.lab = lab
 
     def file_key(rid: str) -> str:
         return hmac.new(token.encode(), f"files:{rid}".encode(), hashlib.sha256).hexdigest()[:32]
@@ -410,6 +416,10 @@ def create_app() -> FastAPI:
             models.delete(where, folder)
         except models.ModelError as e:
             bad(e)
+
+    # LPO lab (lpo/api.py) ----------------------------------------------------------------------
+
+    app.include_router(lpo_api.router(lab))
 
     # The UI -----------------------------------------------------------------------------------
 

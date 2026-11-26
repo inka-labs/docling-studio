@@ -132,7 +132,7 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(method: string, path: string, body?: unknown, raw?: BodyInit): Promise<T> {
+export async function call<T>(method: string, path: string, body?: unknown, raw?: BodyInit): Promise<T> {
   const resp = await fetch(path, {
     method,
     credentials: "same-origin",
